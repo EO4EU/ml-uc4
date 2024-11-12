@@ -1,6 +1,10 @@
 FROM python:3.12.2-bullseye
 ENV FLASK_APP=ForestPrediction.py
-RUN apt-get update && apt-get install ffmpeg libsm6 libxext6  -y
+RUN apt-get update && \
+    apt-get install -y \
+    ffmpeg \
+    libsm6 \
+    libxext6
 COPY . /app
 WORKDIR /app
 RUN pip install -r requirements.txt
