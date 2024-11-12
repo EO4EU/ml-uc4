@@ -4,7 +4,8 @@ RUN apt-get update && \
     apt-get install -y \
     ffmpeg \
     libsm6 \
-    libxext6
+    libxext6 \
+    && apt-get clean
 COPY . /app
 WORKDIR /app
 RUN pip install -r requirements.txt
