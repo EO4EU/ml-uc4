@@ -133,7 +133,7 @@ def create_app():
                                     s3_path=s3_path[:-1]
                               cp = CloudPath("s3://"+s3_bucket_output+'/'+s3_path+'/', client=clientS3)
                               cpOutput = CloudPath("s3://"+s3_bucket_output+'/result-uc4-ForestPrediction/')
-                              logger_workflow("path is s3://"+s3_bucket_output+'/result-uc4-ForestPrediction/', extra={'status': 'DEBUG'})
+                              logger_workflow.info("path is s3://"+s3_bucket_output+'/result-uc4-ForestPrediction/', extra={'status': 'DEBUG'})
 
                               with cpOutput.joinpath('log.txt').open('w') as fileOutput:
                                     
