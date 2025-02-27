@@ -154,7 +154,7 @@ def create_app():
                                                 array=[]
                                                 i=0
                                                 for elem in input_data:
-                                                      array.append([i,elem["result"]])
+                                                      array.append([i,elem["result"].item()])
                                                       i=i+1
                                                 array=np.array(array)
                                                 logger_workflow.info('Output'+str(array.shape), extra={'status': 'DEBUG'})
