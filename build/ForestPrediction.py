@@ -147,12 +147,8 @@ def create_app():
                                                       for i in range(0,n):
                                                             dict={}
                                                             string=x["input"].iloc[i]
-                                                            logger_workflow.info('string'+str(string), extra={'status': 'DEBUG'})
                                                             string=string.strip('[]')
-                                                            logger_workflow.info('string after'+str(string), extra={'status': 'DEBUG'})
                                                             dict["input"]=np.fromstring(string,sep=' ')
-                                                            logger_workflow.info('Input'+str(dict["input"].shape), extra={'status': 'DEBUG'})
-                                                            logger_workflow.info('Input'+str(dict["input"]), extra={'status': 'DEBUG'})
                                                             dict["latitude"]=x["latitude"][i]
                                                             dict["longitude"]=x["longitude"][i]
                                                             dict["id"]=x["id"][i]
@@ -162,13 +158,13 @@ def create_app():
                                                 asyncio.run(doInference(input_data,logger_workflow))
                                                 array=[]
                                                 for elem in input_data:
-                                                      array.append([elem["id"],elem["latitude"],elem["longitude"],elem["result"].item()])
+                                                      array.append([elem["id"],elem["latitude"],elem["longitude"],elem["result"].item(),elem["class"].item()])
                                                 array=np.array(array)
                                                 logger_workflow.info('Output'+str(array.shape), extra={'status': 'DEBUG'})
-                                                with cpOutput.joinpath(folder.name).open('wb') as fileOutput:
+                                                with cpOutput.joinpath(folder.name+'.npy').open('wb') as fileOutput:
                                                       np.save(fileOutput,array)
                                                 with cpOutput.joinpath(folder.name+'.csv').open('w') as fileOutput:
-                                                      np.savetxt(fileOutput,array,delimiter=',',header='id,latitude,longitude,probability')
+                                                      np.savetxt(fileOutput,array,delimiter=',',header='id,latitude,longitude,probability,class')
 
                                     logger_workflow.info('Output written', extra={'status': 'DEBUG'})
                                     logger_workflow.info('Connecting to Kafka', extra={'logger_workflow': 'DEBUG'})
@@ -243,6 +239,7 @@ def create_app():
                   result=results.as_numpy('probability')
                   for i in range(0,length):
                         toInfer[task[1]+i]["result"]=result[i]
+                        toInfer[task[1]+i]["class"]=(result[i]>0.5).astype(np.int32)
 
             def postprocessTask(task):
                   list_task.discard(task)
