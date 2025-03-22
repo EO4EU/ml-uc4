@@ -146,7 +146,7 @@ def create_app():
                                                       inputs=[]
                                                       for i in range(0,n):
                                                             dict={}
-                                                            string=data["input"][i]
+                                                            string=data["input"].iloc[i]
                                                             string.strip('[]')
                                                             dict["input"]=np.fromstring(string,sep=' ')
                                                             logger_workflow.info('Input'+str(dict["input"].shape), extra={'status': 'DEBUG'})
