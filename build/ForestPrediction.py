@@ -164,7 +164,7 @@ def create_app():
                                                 with cpOutput.joinpath(folder.name+'.npy').open('wb') as fileOutput:
                                                       np.save(fileOutput,array)
                                                 with cpOutput.joinpath(folder.name+'.csv').open('w') as fileOutput:
-                                                      np.savetxt(fileOutput,array,delimiter=',',header='id,latitude,longitude,probability,class')
+                                                      np.savetxt(fileOutput,array,delimiter=',',header='id,latitude,longitude,probability,class',fmt=('%.18e','%.18e','%.18e','%.18e','%d'))
 
                                     logger_workflow.info('Output written', extra={'status': 'DEBUG'})
                                     logger_workflow.info('Connecting to Kafka', extra={'logger_workflow': 'DEBUG'})
