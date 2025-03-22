@@ -148,7 +148,7 @@ def create_app():
                                                             dict={}
                                                             string=x["input"].iloc[i]
                                                             logger_workflow.info('string'+str(string), extra={'status': 'DEBUG'})
-                                                            string.strip('[]')
+                                                            string=string.strip('[]')
                                                             logger_workflow.info('string after'+str(string), extra={'status': 'DEBUG'})
                                                             dict["input"]=np.fromstring(string,sep=' ')
                                                             logger_workflow.info('Input'+str(dict["input"].shape), extra={'status': 'DEBUG'})
