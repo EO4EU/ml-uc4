@@ -149,8 +149,8 @@ def create_app():
                                                             string=data["input"][i]
                                                             string.strip('[]')
                                                             dict["input"]=np.fromstring(string,sep=' ')
-                                                            dict["latitude"]=np.array(eval(data["latitude"][i]))
-                                                            dict["longitude"]=np.array(eval(data["longitude"][i]))
+                                                            dict["latitude"]=data["latitude"][i]
+                                                            dict["longitude"]=data["longitude"][i]
                                                             dict["id"]=data["id"][i]
                                                             inputs.append(dict)
                                                       return inputs
