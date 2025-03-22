@@ -142,18 +142,20 @@ def create_app():
                                           if folder.name.endswith('.csv'):
                                                 data = pd.read_csv(folder)
                                                 def read_data(x):
-                                                      n=len(data)
+                                                      n=len(x)
                                                       inputs=[]
                                                       for i in range(0,n):
                                                             dict={}
-                                                            string=data["input"].iloc[i]
+                                                            string=x["input"].iloc[i]
+                                                            logger_workflow.info('string'+str(string), extra={'status': 'DEBUG'})
                                                             string.strip('[]')
+                                                            logger_workflow.info('string after'+str(string), extra={'status': 'DEBUG'})
                                                             dict["input"]=np.fromstring(string,sep=' ')
                                                             logger_workflow.info('Input'+str(dict["input"].shape), extra={'status': 'DEBUG'})
                                                             logger_workflow.info('Input'+str(dict["input"]), extra={'status': 'DEBUG'})
-                                                            dict["latitude"]=data["latitude"][i]
-                                                            dict["longitude"]=data["longitude"][i]
-                                                            dict["id"]=data["id"][i]
+                                                            dict["latitude"]=x["latitude"][i]
+                                                            dict["longitude"]=x["longitude"][i]
+                                                            dict["id"]=x["id"][i]
                                                             inputs.append(dict)
                                                       return inputs
                                                 input_data=read_data(data)
