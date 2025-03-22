@@ -149,6 +149,8 @@ def create_app():
                                                             string=data["input"][i]
                                                             string.strip('[]')
                                                             dict["input"]=np.fromstring(string,sep=' ')
+                                                            logger_workflow.info('Input'+str(dict["input"].shape), extra={'status': 'DEBUG'})
+                                                            logger_workflow.info('Input'+str(dict["input"]), extra={'status': 'DEBUG'})
                                                             dict["latitude"]=data["latitude"][i]
                                                             dict["longitude"]=data["longitude"][i]
                                                             dict["id"]=data["id"][i]
