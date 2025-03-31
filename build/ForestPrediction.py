@@ -139,27 +139,32 @@ def create_app():
                                     
                                     to_treat={}
                                     for folder in cp.iterdir():
-                                          if folder.name.endswith('.npy'):
-                                                data = np.load(folder)
-                                                if data.ndim==1:
-                                                      data=np.expand_dims(data,axis=0)
+                                          if folder.name.endswith('.csv'):
+                                                data = pd.read_csv(folder)
                                                 def read_data(x):
-                                                      n=data.shape[0]
+                                                      n=len(x)
                                                       inputs=[]
                                                       for i in range(0,n):
-                                                            inputs.append({"input":data[i,:]})
+                                                            dict={}
+                                                            string=x["input"].iloc[i]
+                                                            string=string.strip('[]')
+                                                            dict["input"]=np.fromstring(string,sep=' ')
+                                                            dict["latitude"]=x["latitude"][i]
+                                                            dict["longitude"]=x["longitude"][i]
+                                                            dict["id"]=x["id"][i]
+                                                            inputs.append(dict)
                                                       return inputs
                                                 input_data=read_data(data)
                                                 asyncio.run(doInference(input_data,logger_workflow))
                                                 array=[]
                                                 for elem in input_data:
-                                                      array.append(elem["result"])
+                                                      array.append([elem["id"],elem["latitude"],elem["longitude"],elem["result"].item(),elem["class"].item()])
                                                 array=np.array(array)
                                                 logger_workflow.info('Output'+str(array.shape), extra={'status': 'DEBUG'})
-                                                with cpOutput.joinpath(folder.name).open('wb') as fileOutput:
+                                                with cpOutput.joinpath(folder.name+'.npy').open('wb') as fileOutput:
                                                       np.save(fileOutput,array)
                                                 with cpOutput.joinpath(folder.name+'.csv').open('w') as fileOutput:
-                                                      np.savetxt(fileOutput,array,delimiter=',')
+                                                      np.savetxt(fileOutput,array,delimiter=',',header='id,latitude,longitude,probability,class',fmt=('%.18e','%.18e','%.18e','%.18e','%d'))
 
                                     logger_workflow.info('Output written', extra={'status': 'DEBUG'})
                                     logger_workflow.info('Connecting to Kafka', extra={'logger_workflow': 'DEBUG'})
@@ -234,6 +239,7 @@ def create_app():
                   result=results.as_numpy('probability')
                   for i in range(0,length):
                         toInfer[task[1]+i]["result"]=result[i]
+                        toInfer[task[1]+i]["class"]=(result[i]>0.5).astype(np.int32)
 
             def postprocessTask(task):
                   list_task.discard(task)
