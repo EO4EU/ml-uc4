@@ -197,8 +197,8 @@ def create_app():
                                                                   vrt_file.write('</OGRVRTDataSource>\n')
                                                             prob_tiff = tmpdir / 'probability.tiff'
                                                             class_tiff = tmpdir / 'class.tiff'
-                                                            gdal.Grid(prob_tiff, vrt_prob)
-                                                            gdal.Grid(class_tiff, vrt_class)
+                                                            gdal.Grid(str(prob_tiff), str(vrt_prob))
+                                                            gdal.Grid(str(class_tiff), str(vrt_class))
                                                             with cpOutput.joinpath(folder.name+'.probability.tiff').open('wb') as prob_file:
                                                                   with prob_tiff.open('rb') as f:
                                                                         prob_file.write(f.read())
