@@ -5,10 +5,12 @@ RUN apt-get update && \
     ffmpeg \
     libsm6 \
     libxext6 \
+    libgdal-dev \
     && apt-get clean
 COPY . /app
 WORKDIR /app
 RUN pip install -r requirements.txt
+RUN pip install GDAL==$(gdal-config --version)
 RUN curl -fsSL https://tailscale.com/install.sh | sh
 EXPOSE 8080
 ENTRYPOINT [ "flask" ]

@@ -48,6 +48,8 @@ import functools
 
 from KafkaHandler import KafkaHandler,DefaultContextFilter
 
+import gdal
+
 def create_app():
 
       app = Flask(__name__)
@@ -167,6 +169,42 @@ def create_app():
                                                       np.save(fileOutput,array)
                                                 with cpOutput.joinpath(folder.name+'.csv').open('w') as fileOutput:
                                                       np.savetxt(fileOutput,array,delimiter=',',header='id,latitude,longitude,probability,class',fmt=('%.18e','%.18e','%.18e','%.18e','%d'))
+                                                with cpOutput.joinpath(folder.name+'.csv').open('w') as fileInput:
+                                                      with tempfile.TemporaryDirectory() as tmpdir:
+                                                            df = pd.read_csv(fileInput)
+                                                            tmpdir = Path(tmpdir)
+                                                            xyz_prob = tmpdir / 'probability.xyz'
+                                                            xyz_class = tmpdir / 'class.xyz'
+                                                            df[['latitude', 'longitude', 'probability']].to_csv(xyz_prob, sep=' ', index=False, header=False)
+                                                            df[['latitude', 'longitude', 'class']].to_csv(xyz_class, sep=' ', index=False, header=False)
+                                                            vrt_prob = tmpdir / 'probability.vrt'
+                                                            vrt_class = tmpdir / 'class.vrt'
+                                                            with vrt_prob.open('w') as vrt_file:
+                                                                  vrt_file.write('<OGRVRTDataSource>\n') 
+                                                                  vrt_file.write('\t<OGRVRTLayer name="probability">\n') 
+                                                                  vrt_file.write('\t\t<GeometryType>wkbPoint</GeometryType>\n') 
+                                                                  vrt_file.write('\t\t<GeometryField encoding="PointFromColumns" x="longitude" y="latitude" z="probability"/>\n') 
+                                                                  vrt_file.write('\t\t<SrcDataSource>%s</SrcDataSource>\n' % xyz_prob) 
+                                                                  vrt_file.write('\t</OGRVRTLayer>\n') 
+                                                                  vrt_file.write('</OGRVRTDataSource>\n')
+                                                            with vrt_class.open('w') as vrt_file:
+                                                                  vrt_file.write('<OGRVRTDataSource>\n') 
+                                                                  vrt_file.write('\t<OGRVRTLayer name="class">\n') 
+                                                                  vrt_file.write('\t\t<GeometryType>wkbPoint</GeometryType>\n') 
+                                                                  vrt_file.write('\t\t<GeometryField encoding="PointFromColumns" x="longitude" y="latitude" z="class"/>\n') 
+                                                                  vrt_file.write('\t\t<SrcDataSource>%s</SrcDataSource>\n' % xyz_class) 
+                                                                  vrt_file.write('\t</OGRVRTLayer>\n') 
+                                                                  vrt_file.write('</OGRVRTDataSource>\n')
+                                                            prob_tiff = tmpdir / 'probability.tiff'
+                                                            class_tiff = tmpdir / 'class.tiff'
+                                                            gdal.Grid(prob_tiff, vrt_prob)
+                                                            gdal.Grid(class_tiff, vrt_class)
+                                                            with cpOutput.joinpath(folder.name+'.probability.tiff').open('wb') as prob_file:
+                                                                  with prob_tiff.open('rb') as f:
+                                                                        prob_file.write(f.read())
+                                                            with cpOutput.joinpath(folder.name+'.class.tiff').open('wb') as class_file:
+                                                                  with class_tiff.open('rb') as f:
+                                                                        class_file.write(f.read())
 
                                     logger_workflow.debug('Output written', extra={'status': 'DEBUG'})
                                     logger_workflow.debug('Connecting to Kafka', extra={'logger_workflow': 'DEBUG'})
