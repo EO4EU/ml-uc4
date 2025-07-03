@@ -169,7 +169,7 @@ def create_app():
                                                       np.save(fileOutput,array)
                                                 with cpOutput.joinpath(folder.name+'.csv').open('w') as fileOutput:
                                                       np.savetxt(fileOutput,array,delimiter=',',header='id,latitude,longitude,probability,class',fmt=('%.18e','%.18e','%.18e','%.18e','%d'))
-                                                with cpOutput.joinpath(folder.name+'.csv').open('w') as fileInput:
+                                                with cpOutput.joinpath(folder.name+'.csv').open('r') as fileInput:
                                                       with tempfile.TemporaryDirectory() as tmpdir:
                                                             df = pd.read_csv(fileInput)
                                                             tmpdir = Path(tmpdir)
