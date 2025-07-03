@@ -173,10 +173,10 @@ def create_app():
                                                       with tempfile.TemporaryDirectory(delete=False) as tmpdir:
                                                             df = pd.read_csv(fileInput)
                                                             tmpdir = Path(tmpdir)
-                                                            xyz_prob = tmpdir / 'probability.xyz'
-                                                            xyz_class = tmpdir / 'class.xyz'
-                                                            df[['latitude', 'longitude', 'probability']].to_csv(xyz_prob, sep=' ', index=False, header=False)
-                                                            df[['latitude', 'longitude', 'class']].to_csv(xyz_class, sep=' ', index=False, header=False)
+                                                            xyz_prob = tmpdir / 'probability.csv'
+                                                            xyz_class = tmpdir / 'class.csv'
+                                                            df[['latitude', 'longitude', 'probability']].to_csv(xyz_prob, sep=' ', index=False, header=['latitude', 'longitude', 'probability'])
+                                                            df[['latitude', 'longitude', 'class']].to_csv(xyz_class, sep=' ', index=False, header=['latitude', 'longitude', 'class'])
                                                             vrt_prob = tmpdir / 'probability.vrt'
                                                             vrt_class = tmpdir / 'class.vrt'
                                                             with vrt_prob.open('w') as vrt_file:
