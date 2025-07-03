@@ -48,7 +48,7 @@ import functools
 
 from KafkaHandler import KafkaHandler,DefaultContextFilter
 
-import gdal
+from osgeo import gdal
 
 def create_app():
 
