@@ -170,7 +170,7 @@ def create_app():
                                                 with cpOutput.joinpath(folder.name+'.csv').open('w') as fileOutput:
                                                       np.savetxt(fileOutput,array,delimiter=',',header='id,latitude,longitude,probability,class',fmt=('%.18e','%.18e','%.18e','%.18e','%d'))
                                                 with cpOutput.joinpath(folder.name+'.csv').open('r') as fileInput:
-                                                      with tempfile.TemporaryDirectory() as tmpdir:
+                                                      with tempfile.TemporaryDirectory(delete=False) as tmpdir:
                                                             df = pd.read_csv(fileInput)
                                                             tmpdir = Path(tmpdir)
                                                             xyz_prob = tmpdir / 'probability.csv'
