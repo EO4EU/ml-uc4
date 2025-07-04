@@ -184,7 +184,7 @@ def create_app():
                                                                   vrt_file.write('\t<OGRVRTLayer name="probability">\n') 
                                                                   vrt_file.write('\t\t<GeometryType>wkbPoint</GeometryType>\n') 
                                                                   vrt_file.write('\t\t<GeometryField encoding="PointFromColumns" x="longitude" y="latitude"/>\n') 
-                                                                  vrt_file.write('\t\t<Field name="probability" type="Integer"/>\n') 
+                                                                  vrt_file.write('\t\t<Field name="probability" type="Real"/>\n') 
                                                                   vrt_file.write('\t\t<SrcDataSource>%s</SrcDataSource>\n' % xyz_prob) 
                                                                   vrt_file.write('\t</OGRVRTLayer>\n') 
                                                                   vrt_file.write('</OGRVRTDataSource>\n')
