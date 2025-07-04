@@ -6,7 +6,7 @@ default_context:
   include_service: "yes"
   service_name: "forestprediction"
   service_image_repo: "registry.apps.eo4eu.eu/eo4eu/eo4eu-inference-server/uc4/eo4eu-forestprediction"
-  service_image_tag: "1ae022735c75cb2312b7aa4521c0396801c312fe"
+  service_image_tag: "92c0bd4460e95568353cd9daf374ad453adb5b3e"
   service_image_pull_policy: "Always"
   service_image_secret: "uc4-registry"
   service_container_port: "8080"
