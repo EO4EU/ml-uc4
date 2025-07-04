@@ -183,7 +183,8 @@ def create_app():
                                                                   vrt_file.write('<OGRVRTDataSource>\n') 
                                                                   vrt_file.write('\t<OGRVRTLayer name="probability">\n') 
                                                                   vrt_file.write('\t\t<GeometryType>wkbPoint</GeometryType>\n') 
-                                                                  vrt_file.write('\t\t<GeometryField encoding="PointFromColumns" x="longitude" y="latitude" z="probability"/>\n') 
+                                                                  vrt_file.write('\t\t<GeometryField encoding="PointFromColumns" x="longitude" y="latitude"/>\n') 
+                                                                  vrt_file.write('\t\t<Field name="probability" type="Integer"/>\n') 
                                                                   vrt_file.write('\t\t<SrcDataSource>%s</SrcDataSource>\n' % xyz_prob) 
                                                                   vrt_file.write('\t</OGRVRTLayer>\n') 
                                                                   vrt_file.write('</OGRVRTDataSource>\n')
@@ -191,14 +192,15 @@ def create_app():
                                                                   vrt_file.write('<OGRVRTDataSource>\n') 
                                                                   vrt_file.write('\t<OGRVRTLayer name="class">\n') 
                                                                   vrt_file.write('\t\t<GeometryType>wkbPoint</GeometryType>\n') 
-                                                                  vrt_file.write('\t\t<GeometryField encoding="PointFromColumns" x="longitude" y="latitude" z="class"/>\n') 
+                                                                  vrt_file.write('\t\t<GeometryField encoding="PointFromColumns" x="longitude" y="latitude"/>\n')
+                                                                  vrt_file.write('\t\t<Field name="class" type="Integer"/>\n') 
                                                                   vrt_file.write('\t\t<SrcDataSource>%s</SrcDataSource>\n' % xyz_class) 
                                                                   vrt_file.write('\t</OGRVRTLayer>\n') 
                                                                   vrt_file.write('</OGRVRTDataSource>\n')
                                                             prob_tiff = tmpdir / 'probability.tiff'
                                                             class_tiff = tmpdir / 'class.tiff'
-                                                            gdal.Grid(str(prob_tiff), str(vrt_prob))
-                                                            gdal.Grid(str(class_tiff), str(vrt_class))
+                                                            gdal.Grid(str(prob_tiff), str(vrt_prob),options=gdal.GridOptions(zfield='probability',outputType=gdal.GDT_Float32,algorithm='nearest'))
+                                                            gdal.Grid(str(class_tiff), str(vrt_class),options=gdal.GridOptions(zfield='class',outputType=gdal.GDT_Int32,algorithm='nearest'))
                                                             with cpOutput.joinpath(folder.name+'.probability.tiff').open('wb') as prob_file:
                                                                   with prob_tiff.open('rb') as f:
                                                                         prob_file.write(f.read())
