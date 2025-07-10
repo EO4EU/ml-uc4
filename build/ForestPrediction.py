@@ -163,20 +163,22 @@ def create_app():
                                                 dic_grid_param={}
                                                 if len(tiff_files) > 0:
                                                       logger_workflow.debug('Found tiff files: '+str(tiff_files), extra={'status': 'DEBUG'})
-                                                      ref_tiff=gdal.Open(str(tiff_files[0]))
-                                                      gt= ref_tiff.GetGeoTransform()
-                                                      proj= ref_tiff.GetProjection()
-                                                      xRes=gt[1]
-                                                      yRes=gt[5]
-                                                      xmin =gt[0]
-                                                      ymin =gt[3]
-                                                      xmax = xmin + xRes * ref_tiff.RasterXSize
-                                                      ymax = ymin + yRes * ref_tiff.RasterYSize
-                                                      dic_grid_param={
-                                                            'xRes': xRes,
-                                                            'yRes': yRes,
-                                                            'outputBounds': (xmin, ymin, xmax, ymax),
-                                                      }
+                                                      with tiff_files[0].open('rb') as fileInput,rasterio.MemoryFile(fileInput) as memfile:
+                                                            with memfile.open(driver='GTiff',sharing=False) as ref_tiff:
+                                                                  transform = ref_tiff.transform
+                                                                  crs = ref_tiff.crs.to_wkt()
+                                                                  width = ref_tiff.width
+                                                                  height = ref_tiff.height
+                                                                  xRes = transform.a
+                                                                  yRes = -transform.e  # yRes is negative in affine, so take abs
+                                                                  xmin, ymax = transform.c, transform.f
+                                                                  xmax = xmin + width * xRes
+                                                                  ymin = ymax - height * yRes
+                                                                  dic_grid_param={
+                                                                        'xRes': xRes,
+                                                                        'yRes': yRes,
+                                                                        'outputBounds': (xmin, ymin, xmax, ymax),
+                                                                  }
                                                 asyncio.run(doInference(input_data,logger_workflow))
                                                 array=[]
                                                 for elem in input_data:
