@@ -159,6 +159,23 @@ def create_app():
                                                             inputs.append(dict)
                                                       return inputs
                                                 input_data=read_data(data)
+                                                tiff_files = [file for file in folder.parent.iterdir() if file.suffix == '.tiff']
+                                                dic_grid_param={}
+                                                if len(tiff_files) > 0:
+                                                      ref_tiff=gdal.Open(str(tiff_files[0]))
+                                                      gt= ref_tiff.GetGeoTransform()
+                                                      proj= ref_tiff.GetProjection()
+                                                      xRes=gt[1]
+                                                      yRes=gt[5]
+                                                      xmin =gt[0]
+                                                      ymin =gt[3]
+                                                      xmax = xmin + xRes * ref_tiff.RasterXSize
+                                                      ymax = ymin + yRes * ref_tiff.RasterYSize
+                                                      dic_grid_param={
+                                                            'xRes': xRes,
+                                                            'yRes': yRes,
+                                                            'outputBounds': (xmin, ymin, xmax, ymax),
+                                                      }
                                                 asyncio.run(doInference(input_data,logger_workflow))
                                                 array=[]
                                                 for elem in input_data:
@@ -199,8 +216,8 @@ def create_app():
                                                                   vrt_file.write('</OGRVRTDataSource>\n')
                                                             prob_tiff = tmpdir / 'probability.tiff'
                                                             class_tiff = tmpdir / 'class.tiff'
-                                                            gdal.Grid(str(prob_tiff), str(vrt_prob),options=gdal.GridOptions(zfield='probability',outputType=gdal.GDT_Float32,algorithm='nearest'))
-                                                            gdal.Grid(str(class_tiff), str(vrt_class),options=gdal.GridOptions(zfield='class',outputType=gdal.GDT_Int32,algorithm='nearest'))
+                                                            gdal.Grid(str(prob_tiff), str(vrt_prob),options=gdal.GridOptions(zfield='probability',outputType=gdal.GDT_Float32,algorithm='nearest',**dic_grid_param))
+                                                            gdal.Grid(str(class_tiff), str(vrt_class),options=gdal.GridOptions(zfield='class',outputType=gdal.GDT_Int32,algorithm='nearest',**dic_grid_param))
                                                             with cpOutput.joinpath(folder.name+'.probability.tiff').open('wb') as prob_file:
                                                                   with prob_tiff.open('rb') as f:
                                                                         prob_file.write(f.read())
