@@ -48,7 +48,7 @@ import functools
 
 from KafkaHandler import KafkaHandler,DefaultContextFilter
 
-from osgeo import gdal
+from osgeo import gdal,osr
 
 def create_app():
 
@@ -160,7 +160,7 @@ def create_app():
                                                       return inputs
                                                 input_data=read_data(data)
                                                 tiff_files = [file for file in folder.parent.iterdir() if file.suffix == '.tiff']
-                                                dic_grid_param={}
+                                                crs=None
                                                 if len(tiff_files) > 0:
                                                       logger_workflow.debug('Found tiff files: '+str(tiff_files), extra={'status': 'DEBUG'})
                                                       with tiff_files[0].open('rb') as fileInput,rasterio.MemoryFile(fileInput) as memfile:
@@ -176,11 +176,17 @@ def create_app():
                                                                   ymin = ymax - height * yRes
                                                                   width = int((xmax - xmin) / xRes)
                                                                   height = int((ymax - ymin) / yRes)
-                                                                  dic_grid_param={
-                                                                        'width':width,
-                                                                        'height':height,
-                                                                        'outputBounds': (xmin, ymin, xmax, ymax),
-                                                                  }
+                                                else:
+                                                      logger_workflow.debug('No tiff files found using some safe default', extra={'status': 'DEBUG'})
+                                                      crs = 'EPSG:4326'
+                                                      width = 120
+                                                      height = 120
+                                                      xmin = -180.0
+                                                      xmax = 180.0
+                                                      ymin = -90.0
+                                                      ymax = 90.0
+                                                      xRes = (xmax - xmin) / width
+                                                      yRes = (ymax - ymin) / height
                                                 asyncio.run(doInference(input_data,logger_workflow))
                                                 array=[]
                                                 for elem in input_data:
@@ -221,8 +227,20 @@ def create_app():
                                                                   vrt_file.write('</OGRVRTDataSource>\n')
                                                             prob_tiff = tmpdir / 'probability.tiff'
                                                             class_tiff = tmpdir / 'class.tiff'
-                                                            gdal.Grid(str(prob_tiff), str(vrt_prob),options=gdal.GridOptions(zfield='probability',outputType=gdal.GDT_Float32,algorithm='nearest',**dic_grid_param))
-                                                            gdal.Grid(str(class_tiff), str(vrt_class),options=gdal.GridOptions(zfield='class',outputType=gdal.GDT_Int32,algorithm='nearest',**dic_grid_param))
+                                                            srs = osr.SpatialReference()
+                                                            srs.ImportFromWkt(crs)
+                                                            prob_ds = gdal.GetDriverByName('GTiff').Create(str(prob_tiff), width, height, 1, gdal.GDT_Float32)
+                                                            prob_ds.SetGeoTransform([xmin, xRes, 0, ymax, 0, -yRes])
+                                                            prob_ds.SetProjection(srs.ExportToWkt())
+                                                            gdal.Rasterize(prob_ds, str(vrt_prob),options=gdal.RasterizeOptions(attribute='probability'))
+                                                            prob_ds.FlushCache()
+                                                            prob_ds = None
+                                                            class_ds = gdal.GetDriverByName('GTiff').Create(str(class_tiff), width, height, 1, gdal.GDT_Int32)
+                                                            class_ds.SetGeoTransform([xmin, xRes, 0, ymax, 0, -yRes])
+                                                            class_ds.SetProjection(srs.ExportToWkt())
+                                                            gdal.Rasterize(class_ds, str(vrt_class),options=gdal.RasterizeOptions(attribute='class'))
+                                                            class_ds.FlushCache()
+                                                            class_ds = None
                                                             with cpOutput.joinpath(folder.name+'.probability.tiff').open('wb') as prob_file:
                                                                   with prob_tiff.open('rb') as f:
                                                                         prob_file.write(f.read())
