@@ -174,9 +174,11 @@ def create_app():
                                                                   xmin, ymax = transform.c, transform.f
                                                                   xmax = xmin + width * xRes
                                                                   ymin = ymax - height * yRes
+                                                                  width = int((xmax - xmin) / xRes)
+                                                                  height = int((ymax - ymin) / yRes)
                                                                   dic_grid_param={
-                                                                        'xRes': xRes,
-                                                                        'yRes': yRes,
+                                                                        'width':width,
+                                                                        'height':height,
                                                                         'outputBounds': (xmin, ymin, xmax, ymax),
                                                                   }
                                                 asyncio.run(doInference(input_data,logger_workflow))
