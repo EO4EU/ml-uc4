@@ -162,6 +162,7 @@ def create_app():
                                                 tiff_files = [file for file in folder.parent.iterdir() if file.suffix == '.tiff']
                                                 dic_grid_param={}
                                                 if len(tiff_files) > 0:
+                                                      logger_workflow.debug('Found tiff files: '+str(tiff_files), extra={'status': 'DEBUG'})
                                                       ref_tiff=gdal.Open(str(tiff_files[0]))
                                                       gt= ref_tiff.GetGeoTransform()
                                                       proj= ref_tiff.GetProjection()
