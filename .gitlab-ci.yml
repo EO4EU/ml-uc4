@@ -131,7 +131,11 @@ push_image:
   extends: [.dagger]
   tags: [dagger]
   stage: deploy
-  needs: [scan_image]
+  needs:
+    - job: build_image
+      optional: true
+    - job: scan_image
+      optional: true
   script:
     - cd $REPO
     - |
@@ -155,11 +159,7 @@ update_helm:
   extends: [.dagger]
   tags: [dagger]
   stage: .post
-  needs:
-    - job: build_image
-      optional: true
-    - job: scan_image
-      optional: true
+  needs: [push_image]
   artifacts:
     untracked: true
   script:
