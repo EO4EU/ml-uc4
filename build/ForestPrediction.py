@@ -140,113 +140,119 @@ def create_app():
                               logger_workflow.debug("path is s3://"+s3_bucket_output+'/result-uc4-ForestPrediction/', extra={'status': 'DEBUG'})
 
                               with cpOutput.joinpath('log.txt').open('w') as fileOutput:
-                                    
-                                    to_treat={}
-                                    for folder in cp.iterdir():
-                                          if folder.name.endswith('.csv'):
-                                                data = pd.read_csv(folder)
-                                                def read_data(x):
-                                                      n=len(x)
-                                                      inputs=[]
-                                                      for i in range(0,n):
-                                                            dict={}
-                                                            string=x["input"].iloc[i]
-                                                            string=string.strip('[]')
-                                                            dict["input"]=np.fromstring(string,sep=' ')
-                                                            dict["latitude"]=x["latitude"][i]
-                                                            dict["longitude"]=x["longitude"][i]
-                                                            dict["id"]=x["id"][i]
-                                                            inputs.append(dict)
-                                                      return inputs
-                                                input_data=read_data(data)
-                                                tiff_files = [file for file in folder.parent.iterdir() if file.suffix == '.tiff']
-                                                crs=None
-                                                if len(tiff_files) > 0:
-                                                      logger_workflow.debug('Found tiff files: '+str(tiff_files), extra={'status': 'DEBUG'})
-                                                      with tiff_files[0].open('rb') as fileInput,rasterio.MemoryFile(fileInput) as memfile:
-                                                            with memfile.open(driver='GTiff',sharing=False) as ref_tiff:
-                                                                  transform = ref_tiff.transform
-                                                                  crs = ref_tiff.crs.to_wkt()
-                                                                  width = ref_tiff.width
-                                                                  height = ref_tiff.height
-                                                                  xRes = transform.a
-                                                                  yRes = -transform.e  # yRes is negative in affine, so take abs
-                                                                  xmin, ymax = transform.c, transform.f
-                                                                  xmax = xmin + width * xRes
-                                                                  ymin = ymax - height * yRes
-                                                                  width = int((xmax - xmin) / xRes)
-                                                                  height = int((ymax - ymin) / yRes)
-                                                else:
-                                                      logger_workflow.debug('No tiff files found using some safe default', extra={'status': 'DEBUG'})
-                                                      crs = 'EPSG:4326'
-                                                      width = 120
-                                                      height = 120
-                                                      xmin = -180.0
-                                                      xmax = 180.0
-                                                      ymin = -90.0
-                                                      ymax = 90.0
-                                                      xRes = (xmax - xmin) / width
-                                                      yRes = (ymax - ymin) / height
-                                                asyncio.run(doInference(input_data,logger_workflow))
-                                                array=[]
-                                                for elem in input_data:
-                                                      array.append([elem["id"],elem["latitude"],elem["longitude"],elem["result"].item(),elem["class"].item()])
-                                                array=np.array(array)
-                                                logger_workflow.debug('Output'+str(array.shape), extra={'status': 'DEBUG'})
-                                                with cpOutput.joinpath(folder.name+'.npy').open('wb') as fileOutput:
-                                                      np.save(fileOutput,array)
-                                                with cpOutput.joinpath(folder.name+'.csv').open('w') as fileOutput:
-                                                      np.savetxt(fileOutput,array,delimiter=',',header='id,latitude,longitude,probability,class',fmt=('%.18e','%.18e','%.18e','%.18e','%d'))
-                                                with cpOutput.joinpath(folder.name+'.csv').open('r') as fileInput:
-                                                      with tempfile.TemporaryDirectory() as tmpdir:
-                                                            df = pd.read_csv(fileInput)
-                                                            tmpdir = Path(tmpdir)
-                                                            xyz_prob = tmpdir / 'probability.csv'
-                                                            xyz_class = tmpdir / 'class.csv'
-                                                            df[['latitude', 'longitude', 'probability']].to_csv(xyz_prob, sep=' ', index=False, header=['latitude', 'longitude', 'probability'])
-                                                            df[['latitude', 'longitude', 'class']].to_csv(xyz_class, sep=' ', index=False, header=['latitude', 'longitude', 'class'])
-                                                            vrt_prob = tmpdir / 'probability.vrt'
-                                                            vrt_class = tmpdir / 'class.vrt'
-                                                            with vrt_prob.open('w') as vrt_file:
-                                                                  vrt_file.write('<OGRVRTDataSource>\n') 
-                                                                  vrt_file.write('\t<OGRVRTLayer name="probability">\n') 
-                                                                  vrt_file.write('\t\t<GeometryType>wkbPoint</GeometryType>\n') 
-                                                                  vrt_file.write('\t\t<GeometryField encoding="PointFromColumns" x="longitude" y="latitude"/>\n') 
-                                                                  vrt_file.write('\t\t<Field name="probability" type="Real"/>\n') 
-                                                                  vrt_file.write('\t\t<SrcDataSource>%s</SrcDataSource>\n' % xyz_prob) 
-                                                                  vrt_file.write('\t</OGRVRTLayer>\n') 
-                                                                  vrt_file.write('</OGRVRTDataSource>\n')
-                                                            with vrt_class.open('w') as vrt_file:
-                                                                  vrt_file.write('<OGRVRTDataSource>\n') 
-                                                                  vrt_file.write('\t<OGRVRTLayer name="class">\n') 
-                                                                  vrt_file.write('\t\t<GeometryType>wkbPoint</GeometryType>\n') 
-                                                                  vrt_file.write('\t\t<GeometryField encoding="PointFromColumns" x="longitude" y="latitude"/>\n')
-                                                                  vrt_file.write('\t\t<Field name="class" type="Integer"/>\n') 
-                                                                  vrt_file.write('\t\t<SrcDataSource>%s</SrcDataSource>\n' % xyz_class) 
-                                                                  vrt_file.write('\t</OGRVRTLayer>\n') 
-                                                                  vrt_file.write('</OGRVRTDataSource>\n')
-                                                            prob_tiff = tmpdir / 'probability.tiff'
-                                                            class_tiff = tmpdir / 'class.tiff'
-                                                            srs = osr.SpatialReference()
-                                                            srs.ImportFromWkt(crs)
-                                                            prob_ds = gdal.GetDriverByName('GTiff').Create(str(prob_tiff), width, height, 1, gdal.GDT_Float32)
-                                                            prob_ds.SetGeoTransform([xmin, xRes, 0, ymax, 0, -yRes])
-                                                            prob_ds.SetProjection(srs.ExportToWkt())
-                                                            gdal.Rasterize(prob_ds, str(vrt_prob),options=gdal.RasterizeOptions(attribute='probability'))
-                                                            prob_ds.FlushCache()
-                                                            prob_ds = None
-                                                            class_ds = gdal.GetDriverByName('GTiff').Create(str(class_tiff), width, height, 1, gdal.GDT_Int32)
-                                                            class_ds.SetGeoTransform([xmin, xRes, 0, ymax, 0, -yRes])
-                                                            class_ds.SetProjection(srs.ExportToWkt())
-                                                            gdal.Rasterize(class_ds, str(vrt_class),options=gdal.RasterizeOptions(attribute='class'))
-                                                            class_ds.FlushCache()
-                                                            class_ds = None
-                                                            with cpOutput.joinpath(folder.name+'.probability.tiff').open('wb') as prob_file:
-                                                                  with prob_tiff.open('rb') as f:
-                                                                        prob_file.write(f.read())
-                                                            with cpOutput.joinpath(folder.name+'.class.tiff').open('wb') as class_file:
-                                                                  with class_tiff.open('rb') as f:
-                                                                        class_file.write(f.read())
+                                    files=[]
+                                    for csv_file in cp.rglob('*.csv'):
+                                          files.append(csv_file)
+                                    file_timings=[]
+                                    total_number=len(files)
+                                    for file_number,folder in enumerate(files):
+                                          file_start_time=time.time()
+                                          data = pd.read_csv(folder)
+                                          def read_data(x):
+                                                n=len(x)
+                                                inputs=[]
+                                                for i in range(0,n):
+                                                      dict={}
+                                                      string=x["input"].iloc[i]
+                                                      string=string.strip('[]')
+                                                      dict["input"]=np.fromstring(string,sep=' ')
+                                                      dict["latitude"]=x["latitude"][i]
+                                                      dict["longitude"]=x["longitude"][i]
+                                                      dict["id"]=x["id"][i]
+                                                      inputs.append(dict)
+                                                return inputs
+                                          input_data=read_data(data)
+                                          tiff_files = [file for file in folder.parent.iterdir() if file.suffix == '.tiff']
+                                          crs=None
+                                          if len(tiff_files) > 0:
+                                                logger_workflow.debug('Found tiff files: '+str(tiff_files), extra={'status': 'DEBUG'})
+                                                with tiff_files[0].open('rb') as fileInput,rasterio.MemoryFile(fileInput) as memfile:
+                                                      with memfile.open(driver='GTiff',sharing=False) as ref_tiff:
+                                                            transform = ref_tiff.transform
+                                                            crs = ref_tiff.crs.to_wkt()
+                                                            width = ref_tiff.width
+                                                            height = ref_tiff.height
+                                                            xRes = transform.a
+                                                            yRes = -transform.e  # yRes is negative in affine, so take abs
+                                                            xmin, ymax = transform.c, transform.f
+                                                            xmax = xmin + width * xRes
+                                                            ymin = ymax - height * yRes
+                                                            width = int((xmax - xmin) / xRes)
+                                                            height = int((ymax - ymin) / yRes)
+                                          else:
+                                                logger_workflow.debug('No tiff files found using some safe default', extra={'status': 'DEBUG'})
+                                                crs = 'EPSG:4326'
+                                                width = 120
+                                                height = 120
+                                                xmin = -180.0
+                                                xmax = 180.0
+                                                ymin = -90.0
+                                                ymax = 90.0
+                                                xRes = (xmax - xmin) / width
+                                                yRes = (ymax - ymin) / height
+                                          asyncio.run(doInference(input_data,logger_workflow,file_timings,file_number,total_number))
+                                          array=[]
+                                          for elem in input_data:
+                                                array.append([elem["id"],elem["latitude"],elem["longitude"],elem["result"].item(),elem["class"].item()])
+                                          array=np.array(array)
+                                          logger_workflow.debug('Output'+str(array.shape), extra={'status': 'DEBUG'})
+                                          with cpOutput.joinpath(folder.name+'.npy').open('wb') as fileOutput:
+                                                np.save(fileOutput,array)
+                                          with cpOutput.joinpath(folder.name+'.csv').open('w') as fileOutput:
+                                                np.savetxt(fileOutput,array,delimiter=',',header='id,latitude,longitude,probability,class',fmt=('%.18e','%.18e','%.18e','%.18e','%d'))
+                                          with cpOutput.joinpath(folder.name+'.csv').open('r') as fileInput:
+                                                with tempfile.TemporaryDirectory() as tmpdir:
+                                                      df = pd.read_csv(fileInput)
+                                                      tmpdir = Path(tmpdir)
+                                                      xyz_prob = tmpdir / 'probability.csv'
+                                                      xyz_class = tmpdir / 'class.csv'
+                                                      df[['latitude', 'longitude', 'probability']].to_csv(xyz_prob, sep=' ', index=False, header=['latitude', 'longitude', 'probability'])
+                                                      df[['latitude', 'longitude', 'class']].to_csv(xyz_class, sep=' ', index=False, header=['latitude', 'longitude', 'class'])
+                                                      vrt_prob = tmpdir / 'probability.vrt'
+                                                      vrt_class = tmpdir / 'class.vrt'
+                                                      with vrt_prob.open('w') as vrt_file:
+                                                            vrt_file.write('<OGRVRTDataSource>\n') 
+                                                            vrt_file.write('\t<OGRVRTLayer name="probability">\n') 
+                                                            vrt_file.write('\t\t<GeometryType>wkbPoint</GeometryType>\n') 
+                                                            vrt_file.write('\t\t<GeometryField encoding="PointFromColumns" x="longitude" y="latitude"/>\n') 
+                                                            vrt_file.write('\t\t<Field name="probability" type="Real"/>\n') 
+                                                            vrt_file.write('\t\t<SrcDataSource>%s</SrcDataSource>\n' % xyz_prob) 
+                                                            vrt_file.write('\t</OGRVRTLayer>\n') 
+                                                            vrt_file.write('</OGRVRTDataSource>\n')
+                                                      with vrt_class.open('w') as vrt_file:
+                                                            vrt_file.write('<OGRVRTDataSource>\n') 
+                                                            vrt_file.write('\t<OGRVRTLayer name="class">\n') 
+                                                            vrt_file.write('\t\t<GeometryType>wkbPoint</GeometryType>\n') 
+                                                            vrt_file.write('\t\t<GeometryField encoding="PointFromColumns" x="longitude" y="latitude"/>\n')
+                                                            vrt_file.write('\t\t<Field name="class" type="Integer"/>\n') 
+                                                            vrt_file.write('\t\t<SrcDataSource>%s</SrcDataSource>\n' % xyz_class) 
+                                                            vrt_file.write('\t</OGRVRTLayer>\n') 
+                                                            vrt_file.write('</OGRVRTDataSource>\n')
+                                                      prob_tiff = tmpdir / 'probability.tiff'
+                                                      class_tiff = tmpdir / 'class.tiff'
+                                                      srs = osr.SpatialReference()
+                                                      srs.ImportFromWkt(crs)
+                                                      prob_ds = gdal.GetDriverByName('GTiff').Create(str(prob_tiff), width, height, 1, gdal.GDT_Float32)
+                                                      prob_ds.SetGeoTransform([xmin, xRes, 0, ymax, 0, -yRes])
+                                                      prob_ds.SetProjection(srs.ExportToWkt())
+                                                      gdal.Rasterize(prob_ds, str(vrt_prob),options=gdal.RasterizeOptions(attribute='probability'))
+                                                      prob_ds.FlushCache()
+                                                      prob_ds = None
+                                                      class_ds = gdal.GetDriverByName('GTiff').Create(str(class_tiff), width, height, 1, gdal.GDT_Int32)
+                                                      class_ds.SetGeoTransform([xmin, xRes, 0, ymax, 0, -yRes])
+                                                      class_ds.SetProjection(srs.ExportToWkt())
+                                                      gdal.Rasterize(class_ds, str(vrt_class),options=gdal.RasterizeOptions(attribute='class'))
+                                                      class_ds.FlushCache()
+                                                      class_ds = None
+                                                      with cpOutput.joinpath(folder.name+'.probability.tiff').open('wb') as prob_file:
+                                                            with prob_tiff.open('rb') as f:
+                                                                  prob_file.write(f.read())
+                                                      with cpOutput.joinpath(folder.name+'.class.tiff').open('wb') as class_file:
+                                                            with class_tiff.open('rb') as f:
+                                                                  class_file.write(f.read())
+                                          file_end_time=time.time()
+                                          file_timings.append(file_end_time-file_start_time)
+
 
                                     logger_workflow.debug('Output written', extra={'status': 'DEBUG'})
                                     logger_workflow.debug('Connecting to Kafka', extra={'logger_workflow': 'DEBUG'})
@@ -286,7 +292,7 @@ def create_app():
       # The result will be a json with the following fields:
       # model_name : The name of the model used.
       # outputs : The result of the inference.
-      async def doInference(toInfer,logger_workflow):
+      async def doInference(toInfer,logger_workflow,file_timings,file_number,total_number):
 
             triton_client = httpclient.InferenceServerClient(url="default-inference.uc4.svc.cineca-inference-server.local", verbose=False,conn_timeout=10000000,conn_limit=None,ssl=False)
             nb_Created=0
@@ -296,6 +302,8 @@ def create_app():
             list_postprocess=set()
             list_task=set()
             last_throw=0
+            nb_line_done=0
+            nb_line_total=len(toInfer)
             async def consume(task):
                   try:
                         length=task[0]
@@ -317,11 +325,13 @@ def create_app():
                         return await consume(task)
             
             async def postprocess(task,results):
+                  nonlocal nb_line_done
                   length=task[0]
                   result=results.as_numpy('probability')
                   for i in range(0,length):
                         toInfer[task[1]+i]["result"]=result[i]
                         toInfer[task[1]+i]["class"]=(result[i]>0.5).astype(np.int32)
+                  nb_line_done+=length
 
             def postprocessTask(task):
                   list_task.discard(task)
@@ -357,6 +367,39 @@ def create_app():
                   if time.time()-last_shown>60:
                         last_shown=time.time()
                         logger_workflow.debug('done instance '+str(nb_done_instance)+'Inference done value '+str(nb_InferenceDone)+' postprocess done '+str(nb_Postprocess)+ ' created '+str(nb_Created), extra={'status': 'DEBUG'})
+                        # Calculate time estimate for current file
+                        elapsed_time = time.time() - start + 60  # Add back the 60s offset
+                        if nb_line_done > 0:
+                              rate = nb_line_done / elapsed_time
+                              remaining_lines_current_file = nb_line_total - nb_line_done
+                              estimated_remaining_seconds_current_file = remaining_lines_current_file / rate if rate > 0 else 0
+                              # Estimate time for remaining files using actual timing data from completed files
+                              if len(file_timings) > 0:
+                                    # Use average of completed files for better accuracy
+                                    avg_time_per_file = sum(file_timings) / len(file_timings)
+                              else:
+                                    # Fallback to current file estimate if no completed files yet
+                                    avg_time_per_file = elapsed_time
+                              remaining_files = total_number - file_number - 1
+                              estimated_remaining_seconds_other_files = remaining_files * avg_time_per_file
+                              total_estimated_remaining = estimated_remaining_seconds_current_file + estimated_remaining_seconds_other_files
+                              hours = int(total_estimated_remaining // 3600)
+                              minutes = int((total_estimated_remaining % 3600) // 60)
+                              seconds = int(total_estimated_remaining % 60)
+                              time_estimate = f"{hours}h {minutes}m {seconds}s" if hours > 0 else f"{minutes}m {seconds}s"
+                        elif nb_line_done == 0 and len(file_timings) > 0:
+                              # If no lines done yet, use average of completed files
+                              avg_time_per_file = sum(file_timings) / len(file_timings)
+                              remaining_files = total_number - file_number
+                              estimated_remaining_seconds_other_files = remaining_files * avg_time_per_file
+                              hours = int(estimated_remaining_seconds_other_files // 3600)
+                              minutes = int((estimated_remaining_seconds_other_files % 3600) // 60)
+                              seconds = int(estimated_remaining_seconds_other_files % 60)
+                              time_estimate = f"{hours}h {minutes}m {seconds}s" if hours > 0 else f"{minutes}m {seconds}s"
+                        else:
+                              time_estimate = "calculating..."
+                        logger_workflow.info('Progress file '+str(file_number)+'/'+str(total_number)+' : '+str(nb_line_done)+'/' +str(nb_line_total)+' patches ('+str((nb_line_done*100)//nb_line_total)+' %) - Est. remaining: '+time_estimate, extra={'status': 'INFO', 'overwrite':True})
+
             while nb_InferenceDone-nb_Created>0 or nb_Postprocess-nb_InferenceDone>0:
                   await asyncio.sleep(0)
             await asyncio.gather(*list_task,*list_postprocess)
