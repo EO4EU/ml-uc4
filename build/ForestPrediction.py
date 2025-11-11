@@ -164,6 +164,7 @@ def create_app():
                                           input_data=read_data(data)
                                           tiff_files = [file for file in folder.parent.iterdir() if file.suffix == '.tiff']
                                           crs=None
+                                          logger_workflow.info('Estimating time ...',extra={'status':'INFO'})
                                           if len(tiff_files) > 0:
                                                 logger_workflow.debug('Found tiff files: '+str(tiff_files), extra={'status': 'DEBUG'})
                                                 with tiff_files[0].open('rb') as fileInput,rasterio.MemoryFile(fileInput) as memfile:
