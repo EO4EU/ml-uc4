@@ -249,6 +249,12 @@ def create_app():
                                                       class_ds.SetGeoTransform([xmin, xRes, 0, ymax, 0, -yRes])
                                                       class_ds.SetProjection(srs.ExportToWkt())
                                                       gdal.Rasterize(class_ds, str(vrt_class),options=gdal.RasterizeOptions(attribute='class'))
+                                                      class_ds.SetDescription('Mask of forest presence (0/1)')
+                                                      class_ds.SetMetadata({'long_name': 'Forest Mask','description': 'Mask of forest presence (0/1)','min': '0','max': '1','title': 'Forest Mask'})
+                                                      band_class = class_ds.GetRasterBand(1)
+                                                      band_class.SetMetadata({'long_name': 'Forest Mask','description': 'Mask of forest presence (0/1)','min': '0','max': '1','title': 'Forest Mask'})
+                                                      band_class.SetUnitType('Unitless')
+                                                      band_class.SetDescription('Mask of forest presence (0/1)')
                                                       class_ds.FlushCache()
                                                       class_ds = None
                                                       with cpOutput.joinpath(folder.name+'.probability.tiff').open('wb') as prob_file:
