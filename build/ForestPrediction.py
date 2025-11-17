@@ -238,8 +238,11 @@ def create_app():
                                                       prob_ds.SetProjection(srs.ExportToWkt())
                                                       gdal.Rasterize(prob_ds, str(vrt_prob),options=gdal.RasterizeOptions(attribute='probability'))
                                                       prob_ds.SetDescription('Probability of forest presence')
-                                                      prob_ds.SetUnit('Unitless')
                                                       prob_ds.SetMetadata({'long_name': 'Forest Probability','description': 'Probability of forest presence from 0 to 1','min': '0','max': '1','title': 'Forest Probability'})
+                                                      band_prob = prob_ds.GetRasterBand(1)
+                                                      band_prob.SetMetadata({'long_name': 'Forest Probability','description': 'Probability of forest presence from 0 to 1','min': '0','max': '1','title': 'Forest Probability'})
+                                                      band_prob.SetUnit('Unitless')
+                                                      band_prob.SetDescription('Probability of forest presence')
                                                       prob_ds.FlushCache()
                                                       prob_ds = None
                                                       class_ds = gdal.GetDriverByName('GTiff').Create(str(class_tiff), width, height, 1, gdal.GDT_Int32)
