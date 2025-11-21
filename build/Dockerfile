@@ -1,6 +1,6 @@
 FROM python:3.13.9-slim-trixie
 ENV FLASK_APP=ForestPrediction.py
-RUN apt-get update && apt-get install libsm6 libxext6 libexpat1 gdal-bin libgdal-dev -y
+RUN apt-get update && apt-get install libsm6 libxext6 libexpat1 gdal-bin libgdal-dev build-essential -y
 RUN pip install gdal==$(gdal-config --version)
 COPY . /app
 WORKDIR /app
