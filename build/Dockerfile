@@ -8,6 +8,7 @@ RUN apt-get update && \
         libxext6 \
         libexpat1 \
         gdal-bin libgdal-dev \
+        libblas3 liblapack3 \
         build-essential && \
     rm -rf /var/lib/apt/lists/*
 
@@ -26,12 +27,18 @@ RUN groupadd -g 1000 eo4eu && \
 FROM registry.apps.eo4eu.eu/eo4eu/eo4eu-inference-server/uc4/python:3.13
 
 ENV FLASK_APP=ForestPrediction.py
+ENV LD_LIBRARY_PATH="/usr/lib/x86_64-linux-gnu/blas:\
+/usr/lib/x86_64-linux-gnu/lapack:/usr/lib:\
+/usr/lib/x86_64-linux-gnu:/lib/x86_64-linux-gnu"
+
 WORKDIR /app
 
 COPY --from=build /app /app
 COPY --from=build /usr/local /usr/local
-COPY --from=build /usr/lib/x86_64-linux-gnu /usr/lib/x86_64-linux-gnu/
-COPY --from=build /lib/x86_64-linux-gnu /lib/x86_64-linux-gnu
+COPY --from=build /usr/lib /usr/lib/
+COPY --from=build \
+  /usr/local/lib/python3.13/site-packages \
+  /opt/python/lib/python3.13/site-packages
 
 EXPOSE 8080
 USER 1000
